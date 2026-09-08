@@ -528,13 +528,18 @@ if is_production_env() and bool(getattr(settings, "TRUSTED_HOSTS_ENABLED", True)
     from starlette.middleware.trustedhost import TrustedHostMiddleware
 
     allowed_hosts = parse_csv(str(getattr(settings, "ALLOWED_HOSTS", "") or ""))
-    # The container healthcheck and the readiness gates probe the app over loopback, so the
-    # Host header they send is never the public name an operator puts in ALLOWED_HOSTS.
-    # Without these the probe answers 400 "Invalid host header" and the service can never
-    # report healthy. External traffic still has to match the configured hosts.
-    for loopback_host in ("localhost", "127.0.0.1", "[::1]"):
-        if loopback_host not in allowed_hosts:
-            allowed_hosts.append(loopback_host)
+    # Hosts that only ever appear on requests originating inside the deployment, never from
+    # the public edge, so they cannot be spoofed by a browser:
+    #   - loopback: the container healthcheck and the readiness gates probe over localhost
+    #   - service names: the web container proxies /api/v1/* to API_INTERNAL_URL
+    #     (http://mimisee-api:8000), and Next.js rewrites to an absolute URL replace Host
+    #     with the destination, while trusted-forwarding.mjs deliberately strips
+    #     x-forwarded-host so the public name cannot be recovered here.
+    # Without these the app answers 400 "Invalid host header" to its own healthcheck and to
+    # every browser API call. External traffic still has to match ALLOWED_HOSTS.
+    for internal_host in ("localhost", "127.0.0.1", "[::1]", "mimisee-api", "mimisee-worker"):
+        if internal_host not in allowed_hosts:
+            allowed_hosts.append(internal_host)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
 
 # Request body size limit (DoS guardrail).
