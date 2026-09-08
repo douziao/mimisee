@@ -77,6 +77,9 @@ services:
     environment:
       ETCD_ENDPOINTS: mimisee-etcd:2379
       MINIO_ADDRESS: mimisee-minio:9000
+      # Must track the credentials mimisee-minio starts with; see docker-compose.yml.
+      MINIO_ACCESS_KEY_ID: ${MINIO_ACCESS_KEY_DOCKER:-minioadmin}
+      MINIO_SECRET_ACCESS_KEY: ${MINIO_SECRET_KEY_DOCKER:-minioadmin}
     volumes:
       - milvus_data:/var/lib/milvus
     healthcheck:
