@@ -38,7 +38,7 @@ under the Apache License, Version 2.0:
 The current source tree does not bundle model weights. Container builds and the
 explicit `make models` command download a checksum-verified snapshot from:
 
-  https://huggingface.co/qwqqwq/mimisee
+  https://huggingface.co/qwqqwq/mimirq
   revision 118452f3ea3ccd09a41b2d39ea82d7de535e2908
 
 Each downloaded model remains under its own upstream license and attribution;

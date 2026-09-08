@@ -1,0 +1,9 @@
+# Single entry point for panels and orchestrators (1Panel, Portainer, Coolify …) that
+# expect docker-compose.yml and .env to sit together in one directory.
+# It only includes the real files under docker/; build contexts and volumes keep
+# resolving relative to those files, so there is nothing to keep in sync here.
+name: ${COMPOSE_PROJECT_NAME:-mimisee}
+
+include:
+  - docker/docker-compose.yml
+  - docker/docker-compose.web.yml

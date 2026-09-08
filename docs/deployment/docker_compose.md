@@ -20,7 +20,7 @@ NVIDIA 机器可使用 `make up-docling-gpu`（全栈）或 `make infra-up-docli
 只能选择一个。
 
 DeepDoc 的轻量解析模型不随源码仓库分发。Docker 构建会从
-`qwqqwq/mimisee@118452f3ea3ccd09a41b2d39ea82d7de535e2908` 下载并校验模型，
+`qwqqwq/mimirq@118452f3ea3ccd09a41b2d39ea82d7de535e2908` 下载并校验模型，
 因此首次构建需要访问 Hugging Face；镜像构建完成后，运行时不会联网下载模型。
 
 另外，前端服务 `web` 放在 `docker/docker-compose.web.yml`，默认不启动；需要时用 `-f` 叠加即可（或直接 `make up-web`，它会启动后端、Worker、基础设施和前端整套 Docker Web 栈，而不是只启动前端）。
