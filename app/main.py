@@ -528,6 +528,13 @@ if is_production_env() and bool(getattr(settings, "TRUSTED_HOSTS_ENABLED", True)
     from starlette.middleware.trustedhost import TrustedHostMiddleware
 
     allowed_hosts = parse_csv(str(getattr(settings, "ALLOWED_HOSTS", "") or ""))
+    # The container healthcheck and the readiness gates probe the app over loopback, so the
+    # Host header they send is never the public name an operator puts in ALLOWED_HOSTS.
+    # Without these the probe answers 400 "Invalid host header" and the service can never
+    # report healthy. External traffic still has to match the configured hosts.
+    for loopback_host in ("localhost", "127.0.0.1", "[::1]"):
+        if loopback_host not in allowed_hosts:
+            allowed_hosts.append(loopback_host)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
 
 # Request body size limit (DoS guardrail).
