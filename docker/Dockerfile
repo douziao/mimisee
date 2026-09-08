@@ -20,6 +20,9 @@ RUN sed -i \
 
 FROM base AS builder
 
+# Supplied automatically by BuildKit (amd64 / arm64); used to pick matching CPU wheels.
+ARG TARGETARCH
+
 # 复制依赖文件
 COPY requirements.txt /tmp/requirements.txt
 
@@ -35,8 +38,16 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     # Avoid fetching "build dependencies" in isolated envs when network is flaky.
     # Most of our sdists are pure-Python and build fine with setuptools already present.
     && mkdir -p /tmp/torch-wheels \
-    && TORCH_WHL="torch-2.13.0+cpu-cp311-cp311-manylinux_2_28_x86_64.whl" \
-    && TORCHVISION_WHL="torchvision-0.28.0+cpu-cp311-cp311-manylinux_2_28_x86_64.whl" \
+    # PyTorch publishes the pinned +cpu wheels per CPU architecture. Map Docker's
+    # TARGETARCH onto the platform tag used in the wheel filename; installing an
+    # x86_64 wheel on arm64 fails with "not a supported wheel on this platform".
+    && case "${TARGETARCH:-amd64}" in \
+        amd64) WHEEL_ARCH="x86_64" ;; \
+        arm64) WHEEL_ARCH="aarch64" ;; \
+        *) echo "unsupported TARGETARCH for pinned torch wheels: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac \
+    && TORCH_WHL="torch-2.13.0+cpu-cp311-cp311-manylinux_2_28_${WHEEL_ARCH}.whl" \
+    && TORCHVISION_WHL="torchvision-0.28.0+cpu-cp311-cp311-manylinux_2_28_${WHEEL_ARCH}.whl" \
     && curl --fail --location --continue-at - --retry 10 --retry-all-errors --retry-delay 5 \
         -o "/tmp/torch-wheels/${TORCH_WHL}" \
         "https://download-r2.pytorch.org/whl/cpu/${TORCH_WHL}" \
@@ -70,7 +81,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libreoffice \
     # SQLServer: install Microsoft ODBC driver (msodbcsql18)
     && curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft.gpg \
-    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/microsoft-prod.list \
+    # Microsoft ships msodbcsql18 for both amd64 and arm64; pin the repo to the image's own architecture.
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/microsoft-prod.list \
     && apt-get update \
     && ACCEPT_EULA=Y apt-get install -y --no-install-recommends msodbcsql18 \
     && rm -rf /var/lib/apt/lists/*
